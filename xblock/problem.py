@@ -50,16 +50,13 @@ class ProblemBlock(XBlock):
     problem_attempted = Boolean(help="Has the student attempted this problem?", scope=Scope.user_state, default=False)
     has_children = True
 
-    @classmethod
-    def preprocess_input(cls, node, usage_factory):
+    def parse_xml(self, node):
         # Find <script> children, turn them into script content.
-        kids = []
-        for kid in node.children:
-            if kid.block_name == "script":
-                node.initial_state['script'] = kid.initial_state['content']
+        for child in node:
+            if child.tag == "script":
+                self.script += child.text
             else:
-                kids.append(kid)
-        return usage_factory(node.block_name, kids, node.initial_state, node.def_id)
+                self.runtime.add_node_as_child(self, child)
 
     def set_student_seed(self):
         """Set a random seed for the student so they each have different but repeatable data."""
@@ -312,16 +309,17 @@ class CheckerBlock(XBlock):
     """
     arguments = Dict(help="The arguments expected by `check`")
 
-    @classmethod
-    def preprocess_input(cls, node, _usage_factory):
+    def set_arguments_from_xml(self, node):
         # Introspect the .check() method, and collect arguments it expects.
-        content = node.initial_state
-        argspec = inspect.getargspec(cls.check)
+        argspec = inspect.getargspec(self.check)
         arguments = {}
         for arg in argspec.args[1:]:
-            arguments[arg] = content.pop(arg)
-        content['arguments'] = arguments
-        return node
+            arguments[arg] = node.attrib.pop(arg)
+        self.arguments = arguments
+
+    def parse_xml(self, node):
+        self.set_arguments_from_xml(node)
+        super(CheckerBlock, self).parse_xml(node)
 
     def check(self, **kwargs):
         """

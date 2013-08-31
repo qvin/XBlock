@@ -2,14 +2,19 @@
 Machinery to make the common case easy when building new runtimes
 """
 
-import re
 import functools
+import itertools
+import re
+
+from lxml import etree
+from cStringIO import StringIO
 
 from collections import namedtuple
 from xblock.fields import Field, BlockScope, Scope, UserScope
 from xblock.field_data import FieldData
 from xblock.exceptions import NoSuchViewError, NoSuchHandlerError
 from xblock.core import XBlock
+from xblock.fields import ScopeIds, UserScope
 
 
 class KeyValueStore(object):
@@ -179,6 +184,22 @@ class DbModel(FieldData):
         return self._kvs.default(self._key(block, name))
 
 
+class UsageStore(object):
+    """TOTAL CONFUSED HACK."""
+    def __init__(self):
+        self._ids = itertools.count()
+        self._all = {}
+
+    def next_id(self):
+        return str(next(self._ids))
+
+    def set(self, usage_id, block_name, def_id):
+        self._all[usage_id] = (block_name, def_id)
+
+    def get(self, usage_id):
+        return self._all[usage_id]
+
+
 class Runtime(object):
     """
     Access to the runtime environment for XBlocks.
@@ -192,6 +213,9 @@ class Runtime(object):
         """
         self._view_name = None
         self.mixologist = Mixologist(mixins)
+        self.usage_store = None     # subclass had better set this!!
+
+    # Block operations
 
     def construct_xblock(self, plugin_name, field_data, scope_ids, default_class=None, *args, **kwargs):
         """
@@ -207,6 +231,51 @@ class Runtime(object):
         defined for this application
         """
         return self.mixologist.mix(cls)(runtime=self, field_data=field_data, scope_ids=scope_ids, *args, **kwargs)
+
+    def get_block(self, block_id):
+        """Get a block by ID.
+
+        Returns the block identified by `block_id`, or raises an exception.
+        """
+        raise NotImplementedError("Runtime needs to provide get_block()")
+
+    # Parsing XML
+
+    def parse_xml_string(self, xml):
+        return self.parse_xml_file(StringIO(xml))
+
+    def parse_xml_file(self, fileobj):
+        """Parse XML, producing a usage id."""
+        root = etree.parse(fileobj).getroot()
+        usage_id = self._usage_id_from_node(root)
+        return usage_id
+
+    def _usage_id_from_node(self, node):
+        # Tags that introduce HTML content. We only need to include HTML block tags,
+        # since others (like <b> and <i>) will appear inside blocks like <p>.
+        HTML_TAGS = set("p ol ul div h1 h2 h3 h4 h5 h6".split())
+
+        # TODO: a way to vary the mapping from tag to class name?
+        if node.tag in HTML_TAGS:
+            block_name = "html"
+        else:
+            block_name = node.tag
+        # TODO: a way for this node to be a usage to an existing definition?
+        usage_id = self.usage_store.next_id()
+        def_id = self.usage_store.next_id()
+        keys = ScopeIds(UserScope.NONE, block_name, str(def_id), str(usage_id))
+        block = self.construct_block(block_name, self.field_data, keys)
+        block.parse_xml(node)
+        block.save()
+        self.usage_store.set(usage_id, block_name, def_id)
+        return usage_id
+
+    def add_node_as_child(self, block, node):
+        """Called by XBlock.parse_xml to treat a child node as a child block."""
+        usage_id = self._usage_id_from_node(node)
+        block.children.append(usage_id)
+
+    # Rendering
 
     def render(self, block, context, view_name):
         """
@@ -242,13 +311,6 @@ class Runtime(object):
         finally:
             # Reset the active view to what it was before entering this method
             self._view_name = old_view_name
-
-    def get_block(self, block_id):
-        """Get a block by ID.
-
-        Returns the block identified by `block_id`, or raises an exception.
-        """
-        raise NotImplementedError("Runtime needs to provide get_block()")
 
     def render_child(self, child, context, view_name=None):
         """A shortcut to render a child block.
@@ -287,6 +349,8 @@ class Runtime(object):
         # By default, just return the fragment itself.
         return frag
 
+    # Handlers
+
     def handle(self, block, handler_name, data):
         """
         Handles any calls to the specified `handler_name`.
@@ -320,6 +384,8 @@ class Runtime(object):
 
         """
         raise NotImplementedError("Runtime needs to provide handler_url()")
+
+    # Querying
 
     def query(self, block):
         """Query for data in the tree, starting from `block`.
