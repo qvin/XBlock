@@ -200,5 +200,5 @@ class XBlock(Plugin):
 
         # Attributes become fields.
         for name, value in node.items():
-            if hasattr(self, name):
+            if name in self.fields:
                 setattr(self, name, value)
