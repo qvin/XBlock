@@ -193,8 +193,8 @@ class UsageStore(object):
     def next_id(self):
         return str(next(self._ids))
 
-    def set(self, usage_id, block_name, def_id):
-        self._all[usage_id] = (block_name, def_id)
+    def set(self, usage_id, block_type, def_id):
+        self._all[usage_id] = (block_type, def_id)
 
     def get(self, usage_id):
         return self._all[usage_id]
@@ -217,12 +217,12 @@ class Runtime(object):
 
     # Block operations
 
-    def construct_xblock(self, plugin_name, field_data, scope_ids, default_class=None, *args, **kwargs):
+    def construct_xblock(self, block_type, field_data, scope_ids, default_class=None, *args, **kwargs):
         """
-        Construct a new xblock of the type identified by plugin_name,
+        Construct a new xblock of the type identified by block_type,
         passing *args and **kwargs into __init__
         """
-        block_class = XBlock.load_class(plugin_name, default_class)
+        block_class = XBlock.load_class(block_type, default_class)
         return self.construct_xblock_from_class(cls=block_class, field_data=field_data, scope_ids=scope_ids, *args, **kwargs)
 
     def construct_xblock_from_class(self, cls, field_data, scope_ids, *args, **kwargs):
@@ -257,17 +257,17 @@ class Runtime(object):
 
         # TODO: a way to vary the mapping from tag to class name?
         if node.tag in HTML_TAGS:
-            block_name = "html"
+            block_type = "html"
         else:
-            block_name = node.tag
+            block_type = node.tag
         # TODO: a way for this node to be a usage to an existing definition?
         usage_id = self.usage_store.next_id()
         def_id = self.usage_store.next_id()
-        keys = ScopeIds(UserScope.NONE, block_name, str(def_id), str(usage_id))
-        block = self.construct_block(block_name, self.field_data, keys)
+        keys = ScopeIds(UserScope.NONE, block_type, str(def_id), str(usage_id))
+        block = self.construct_block(block_type, self.field_data, keys)
         block.parse_xml(node)
         block.save()
-        self.usage_store.set(usage_id, block_name, def_id)
+        self.usage_store.set(usage_id, block_type, def_id)
         return usage_id
 
     def add_node_as_child(self, block, node):

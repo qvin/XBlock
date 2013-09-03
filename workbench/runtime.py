@@ -106,9 +106,9 @@ class WorkbenchRuntime(Runtime):
         The `usage_id` is used to find the XBlock class and data.
 
         """
-        block_name, def_id = self.usage_store.get(usage_id)
-        keys = ScopeIds(self.student_id, block_name, def_id, usage_id)
-        block = self.construct_xblock(block_name, self.field_data, keys)
+        block_type, def_id = self.usage_store.get(usage_id)
+        keys = ScopeIds(self.student_id, block_type, def_id, usage_id)
+        block = self.construct_xblock(block_type, self.field_data, keys)
         return block
 
     def render(self, block, context, view_name):
