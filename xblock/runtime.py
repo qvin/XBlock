@@ -261,10 +261,11 @@ class Runtime(object):
     # Parsing XML
 
     def parse_xml_string(self, xml):
+        """Parse a string of XML, returning a usage id."""
         return self.parse_xml_file(StringIO(xml))
 
     def parse_xml_file(self, fileobj):
-        """Parse XML, producing a usage id."""
+        """Parse an XML file, returning a usage id."""
         root = etree.parse(fileobj).getroot()
         usage_id = self._usage_id_from_node(root)
         return usage_id

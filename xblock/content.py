@@ -30,6 +30,13 @@ class HtmlBlock(XBlock):
         return Fragment(Template(self.content).substitute(**context))
 
     def parse_xml(self, node):
+        """
+        Parse the XML for an HTML block.
+
+        The entire subtree under `node` is re-serialized, and set as the
+        content of the XBlock.
+
+        """
         self.content = etree.tostring(node, encoding='unicode')
 
     @staticmethod

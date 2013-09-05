@@ -309,7 +309,10 @@ class CheckerBlock(XBlock):
     """
     arguments = Dict(help="The arguments expected by `check`")
 
-    def set_arguments_from_xml(self, node):
+    def _set_arguments_from_xml(self, node):
+        """
+        Set the `arguments` field from XML attributes based on `check` arguments.
+        """
         # Introspect the .check() method, and collect arguments it expects.
         argspec = inspect.getargspec(self.check)
         arguments = {}
@@ -318,7 +321,11 @@ class CheckerBlock(XBlock):
         self.arguments = arguments
 
     def parse_xml(self, node):
-        self.set_arguments_from_xml(node)
+        """
+        Parse the XML for a checker. A few arguments are handled specially,
+        then the rest get the usual treatment.
+        """
+        self._set_arguments_from_xml(node)
         super(CheckerBlock, self).parse_xml(node)
 
     def check(self, **kwargs):
