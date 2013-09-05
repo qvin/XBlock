@@ -202,3 +202,11 @@ class XBlock(Plugin):
         for name, value in node.items():
             if name in self.fields:
                 setattr(self, name, value)
+
+        # Text content becomes "content", if such a field exists.
+        if "content" in self.fields and self.fields["content"].scope == Scope.content:
+            text = node.text
+            if text:
+                text = text.strip()
+                if text:
+                    self.content = text
