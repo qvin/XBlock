@@ -283,7 +283,7 @@ class Runtime(object):
         def_id = self.usage_store.create_definition(block_type)
         usage_id = self.usage_store.create_usage(def_id)
         keys = ScopeIds(UserScope.NONE, block_type, def_id, usage_id)
-        block = self.construct_block(block_type, self.field_data, keys)
+        block = self.construct_xblock(block_type, self.field_data, keys)
         block.parse_xml(node)
         block.save()
         return usage_id
