@@ -7,55 +7,28 @@ This code is in the Runtime layer.
 from collections import namedtuple
 from hashlib import md5
 
-from xblock.utils import OrderedSet
 
-# pylint: disable=C0103
-_FRTuple = namedtuple("_FragmentResource", "kind, data, mimetype, placement")
-
-class _FragmentResource(_FRTuple):
-
-    __slots__ = ()
+class _FragmentResource(namedtuple("_FragmentResource", "kind, data, mimetype, placement")):
+    """ Class for a Fragment's resource: javascript, css, and the like"""
+    #pylint: disable=E1101
 
     def __repr__(self):
-        instance_str = "_FragmentResource(kind=%r,data=%,mimetype=%r,placement=%r)"
+        instance_str = "_FragmentResource(kind=%r data=%r mimetype=%r placement=%r)"
 
-        return instance_str % (self.kind, self.data, self.mimetype,
-                self.placement)
+        return instance_str % (self.kind, self.data, self.mimetype, self.placement)
 
-    def __str__(self):
-        """ Returns `resource` wrapped in the appropriate html tag for it's
-        mimetype.
-        """
-        if self.mimetype == "text/css":
-            if self.kind == "text":
-                return (u"<style type='text/css'>\n%s\n</style>" % self.data)
-            elif self.kind == "url":
-                return (u"<link rel='stylesheet' href='%s' type='text/css'>" % self.data)
-
-        elif self.mimetype == "application/javascript":
-            if self.kind == "text":
-                return (u"<script>\n%s\n</script>" % self.data)
-            elif kind == "url":
-                return (u"<script src='%s' type='application/javascript'></script>" % self.data)
-
-        elif self.mimetype == "text/html":
-            assert self.kind == "text"
-            return self.data
-
-        else:
-            raise Exception("Never heard of mimetype %r" % mimetype)
 
     @property
     def _undigested_hash(self):
         """ An 'undigested' hash for this object. Useful for hashing multiple
         `_FragmentResource` objects together.
         """
-        h = md5()
-        h.update(self.kind)
-        h.update(self.data)
-        h.update(self.mimetype)
-        h.update(self.placement)
-        return h
+        md5_hash = md5()
+        md5_hash.update(self.kind)
+        md5_hash.update(self.data)
+        md5_hash.update(self.mimetype)
+        md5_hash.update(self.placement)
+        return md5_hash
 
 
     def __hash__(self):
@@ -63,8 +36,13 @@ class _FragmentResource(_FRTuple):
         return int(self._undigested_hash.hexdigest(), 16)
 
     def __eq__(self, other):
-        return (isinstance(other, _FragmentResource) and
-            self.__hash__() == hash(other))
+        return (
+            isinstance(other, _FragmentResource) and
+            self.kind == other.kind and
+            self.data == other.data and
+            self.mimetype == other.mimetype and
+            self.placement == other.placement
+        )
 
 
 class Fragment(object):
@@ -84,11 +62,23 @@ class Fragment(object):
     """
     def __init__(self, content=None):
         self.content = u""
-        self.resources = OrderedSet()
+        self._resources = []
         self.js_init = None
 
         if content is not None:
             self.add_content(content)
+
+    @property
+    def resources(self):
+        """ A list of unique resources by order of first appearance """
+        seen = set()
+        return [x for x in self._resources if x not in seen and not seen.add(x)]
+
+    @resources.setter
+    def resources(self, val):   #pylint: disable=E0102
+        """ Simple setter for resources """
+        self._resources = val
+
 
     def to_pods(self):
         """Returns the data in a dictionary.
@@ -96,7 +86,7 @@ class Fragment(object):
         'pods' = Plain Old Data Structure."""
         return {
             'content': self.content,
-            'resources': [dict(r) for r in self.resources],
+            'resources': [r._asdict() for r in self.resources], #pylint: disable=W0212
             'js_init': self.js_init
         }
 
@@ -111,8 +101,7 @@ class Fragment(object):
         """
         frag = cls()
         frag.content = pods['content']
-        frag.resources = OrderedSet([_FragmentResource(**d) for d in
-            pods['resources']])
+        frag.resources = [_FragmentResource(**d) for d in pods['resources']]
         frag.js_init = pods['js_init']
         return frag
 
@@ -156,7 +145,7 @@ class Fragment(object):
         if not placement:
             placement = self._default_placement(mimetype)
         res = _FragmentResource('text', text, mimetype, placement)
-        self.resources.add(res)
+        self._resources.append(res)
 
     def add_resource_url(self, url, mimetype, placement=None):
         """Add a resource by URL needed by this Fragment.
@@ -172,7 +161,7 @@ class Fragment(object):
         """
         if not placement:
             placement = self._default_placement(mimetype)
-        self.resources.add(_FragmentResource('url', url, mimetype, placement))
+        self._resources.append(_FragmentResource('url', url, mimetype, placement))
 
     def add_css(self, text):
         """Add literal CSS to the Fragment."""
@@ -202,7 +191,7 @@ class Fragment(object):
         together the content into this Fragment's content.
 
         """
-        self.resources.union(frag.resources)
+        self._resources.extend(frag.resources)
 
     def add_frags_resources(self, frags):
         """Add all the resources from `frags` to my resources.
@@ -250,7 +239,7 @@ class Fragment(object):
         of the page.
 
         """
-        return self._resource_html("head")
+        return self.resources_to_html("head")
 
     def foot_html(self):
         """Get the foot HTML for this Fragment.
@@ -259,9 +248,9 @@ class Fragment(object):
         ``<body>`` section of the page.
 
         """
-        return self._resource_html("foot")
+        return self.resources_to_html("foot")
 
-    def _resource_html(self, placement):
+    def resources_to_html(self, placement):
         """Get some resource HTML for this Fragment.
 
         `placement` is "head" or "foot".
@@ -269,7 +258,6 @@ class Fragment(object):
         Returns a unicode string, the HTML for the head or foot of the page.
 
         """
-        # The list of HTML to return
         html = ""
 
         # TODO: [rocha] aggregate and wrap css and javascript.
@@ -280,6 +268,30 @@ class Fragment(object):
             # Only take the pieces for our placement.
             if resource.placement != placement:
                 continue
-            html += (str(resource) + "\n")
+            html += (self.resource_to_html(resource) + "\n")
 
         return html
+
+    @staticmethod
+    def resource_to_html(resource):
+        """ Returns `resource` wrapped in the appropriate html tag for it's
+        mimetype.
+        """
+        if resource.mimetype == "text/css":
+            if resource.kind == "text":
+                return (u"<style type='text/css'>\n%s\n</style>" % resource.data)
+            elif resource.kind == "url":
+                return (u"<link rel='stylesheet' href='%s' type='text/css'>" % resource.data)
+
+        elif resource.mimetype == "application/javascript":
+            if resource.kind == "text":
+                return (u"<script>\n%s\n</script>" % resource.data)
+            elif resource.kind == "url":
+                return (u"<script src='%s' type='application/javascript'></script>" % resource.data)
+
+        elif resource.mimetype == "text/html":
+            assert resource.kind == "text"
+            return resource.data
+
+        else:
+            raise Exception("Never heard of mimetype %r" % resource.mimetype)
