@@ -7,7 +7,7 @@ import unittest
 
 from xblock.core import XBlock
 from xblock.fields import Scope, String, Integer
-from xblock.test.tools import blocks_are_equal
+from xblock.test.tools import blocks_are_equivalent
 from workbench.runtime import WorkbenchRuntime
 
 # XBlock classes to use in the tests.
@@ -152,4 +152,4 @@ class ExportTest(XmlTest, unittest.TestCase):
 
         # The important part: exporting then importing a block should give
         # you an equivalent block.
-        self.assertTrue(blocks_are_equal(block, block_imported))
+        self.assertTrue(blocks_are_equivalent(block, block_imported))

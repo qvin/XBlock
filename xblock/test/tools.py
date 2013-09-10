@@ -28,8 +28,8 @@ class DictKeyValueStore(KeyValueStore):
         return key in self.db_dict
 
 
-def blocks_are_equal(block1, block2):
-    """Compare two blocks for equality.
+def blocks_are_equivalent(block1, block2):
+    """Compare two blocks for equivalence.
     """
     # The two blocks have to be the same class.
     if block1.__class__ != block2.__class__:
@@ -62,7 +62,7 @@ def blocks_are_equal(block1, block2):
             # Load up the actual children to see if they are equal.
             child1 = block1.runtime.get_block(child_id1)
             child2 = block2.runtime.get_block(child_id2)
-            if not blocks_are_equal(child1, child2):
+            if not blocks_are_equivalent(child1, child2):
                 return False
 
     return True
