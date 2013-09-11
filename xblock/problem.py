@@ -456,14 +456,6 @@ class EqualityCheckerBlock(CheckerBlock):
         self.right = right
         return left == right
 
-    @staticmethod
-    def workbench_scenarios():
-        """Provide scenarios to the workbench.
-
-        In this case, there's no point showing this block, so return none.
-        """
-        return []
-
 
 class AttemptsScoreboardBlock(XBlock):
     """
