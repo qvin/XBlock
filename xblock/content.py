@@ -37,7 +37,7 @@ class HtmlBlock(XBlock):
         content of the XBlock.
 
         """
-        self.content = ""
+        self.content = node.text or u""
         for child in node:
             self.content += etree.tostring(child, encoding='unicode')
 
@@ -52,6 +52,7 @@ class HtmlBlock(XBlock):
         html_node = etree.fromstring(xml)
 
         node.tag = html_node.tag
+        node.text = html_node.text
         for child in html_node:
             node.append(child)
 

@@ -178,3 +178,18 @@ class HtmlInOutTest(XmlTest, unittest.TestCase):
         new_xml = self.export_xml_for_block(block)
         # For now, I'm not sure how to treat the whitespace, so ignore it.
         self.assertEqual(squish(the_xml), squish(new_xml))
+
+    def test_text_content(self):
+        tests = [
+            "<html>Hello, world!</html>",
+            "<html>Hello, <b>world!</b></html>",
+            "<html><b>Hello</b>, world!</html>",
+            "<html><b>Hello</b>, <b>world!</b></html>",
+            "<html><b>Hello</b>, <b>world!</b> &amp; goodbye.</html>",
+        ]
+
+        for test in tests:
+            block = self.parse_xml_to_block(test)
+            xml = self.export_xml_for_block(block)
+
+            self.assertIn(test, xml)
