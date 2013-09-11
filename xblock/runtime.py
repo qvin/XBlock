@@ -194,7 +194,7 @@ class UsageStore(object):
         """
         pass
 
-    def get_usage(self, usage_id):
+    def get_definition_id(self, usage_id):
         """Get a usage.
 
         Returns the definition id stored as the usage.
@@ -210,7 +210,7 @@ class UsageStore(object):
         """
         pass
 
-    def get_definition(self, def_id):
+    def get_block_type(self, def_id):
         """Get a definition.
 
         Returns the block_type stored as the definition.

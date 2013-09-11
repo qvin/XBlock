@@ -103,7 +103,7 @@ class MemoryUsageStore(UsageStore):
         self._usages[usage_id] = def_id
         return usage_id
 
-    def get_usage(self, usage_id):
+    def get_definition_id(self, usage_id):
         """Get a definition_id by its usage id."""
         return self._usages[usage_id]
 
@@ -113,7 +113,7 @@ class MemoryUsageStore(UsageStore):
         self._definitions[def_id] = block_type
         return def_id
 
-    def get_definition(self, def_id):
+    def get_block_type(self, def_id):
         """Get a block_type by its definition id."""
         return self._definitions[def_id]
 
@@ -140,8 +140,8 @@ class WorkbenchRuntime(Runtime):
         The `usage_id` is used to find the XBlock class and data.
 
         """
-        def_id = self.usage_store.get_usage(usage_id)
-        block_type = self.usage_store.get_definition(def_id)
+        def_id = self.usage_store.get_definition_id(usage_id)
+        block_type = self.usage_store.get_block_type(def_id)
         keys = ScopeIds(self.student_id, block_type, def_id, usage_id)
         block = self.construct_xblock(block_type, self.field_data, keys)
         return block
